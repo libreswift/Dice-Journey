@@ -4,23 +4,24 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 abstract class Entity(
-    private var attackPoints: Int,
-    private var maxDamage: Int,
+    var name: String,
+    private val attackPoints: Int,
+    private val maxHealth: Int,
     private val defencePoints: Int,
     private var healthPoints: Int,
     private var status: Status = Status.Alive
 ) {
+    private var isAttacking = false
+    private var isSuccessAttack = false
     init {
         if (
             (attackPoints <= 0) ||
-            (maxDamage <= 0) ||
             (defencePoints <= 0) ||
             (healthPoints <= 0) ||
             (status == Status.Dead)
         ) throw IllegalArgumentException()
     }
-
-    open fun attack(target: Entity) {
+    open fun attack(target: Entity, dices: List<Int>) {
         if (target == this) {
             println("Dont touch yourself!")
             return
@@ -28,28 +29,17 @@ abstract class Entity(
 
         if (target.status == Status.Dead) {
             println("Your opponent is dead!")
-        } else {
-            attackOther(target)
+            return
         }
-    }
 
-    private fun attackOther(target: Entity) {
+        isAttacking = true
         println("attacking! target HP is ${target.healthPoints}")
 
-        var modifier = getModifier(target.defencePoints)
-        if (modifier < 1) modifier = 1
-
-        val dices = mutableListOf<Int>()
-        repeat(modifier) {
-            println("modifier: $modifier")
-            dices.add(Dice.roll())
-        }
-
-        println(dices.toString())
-
         if (countDamage(dices) == 0) {
+            isSuccessAttack = false
             println("Miss!")
         } else {
+            isSuccessAttack = true
             target.takeDamage(countDamage(dices))
             println("Attack is successful! Target HP is ${target.healthPoints}")
         }
@@ -62,14 +52,21 @@ abstract class Entity(
 
 
     open fun heal() {
+        isAttacking = false
         println("before heal: $healthPoints")
+
         val meds = healthPoints * 1.3
         healthPoints = meds.roundToInt()
+
         println("after heal: $healthPoints")
     }
 
-    private fun takeDamage(damage: Int) {
-        healthPoints -= damage
+    private fun takeDamage(value: Int) {
+        isAttacking = false
+        val damage = healthPoints - value
+        if (damage < 1) {
+            healthPoints = 0
+        } else healthPoints -= damage
     }
 
     private fun countDamage(dices: List<Int>): Int {
@@ -86,17 +83,18 @@ abstract class Entity(
 
     fun getHealth() = healthPoints
     fun getAttackPoints() = attackPoints
+    fun getMaxHealth() = maxHealth
+
+    fun getDefencePoints() = defencePoints
 
     fun setHealth(maxhealth: Int){
         healthPoints = maxhealth
     }
-    fun setAttackPoints(attack: Int){
-        attackPoints = attack
-    }
 
-    private fun getModifier(defenceOther: Int) = (attackPoints - defenceOther) + 1
-    private fun getRandomDamage(): Int = Random.nextInt(1, maxDamage + 1)
-    private fun isDead() = (healthPoints <= 0)
+    private fun getRandomDamage(): Int = Random.nextInt(1, attackPoints + 1)
+    fun isDead() = (healthPoints <= 0)
+    fun isAttacking() = isAttacking
+    fun isSuccessAttack() = isSuccessAttack
 }
 
 enum class Status {
